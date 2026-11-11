@@ -1,0 +1,17 @@
+{
+  "name": "TRI-Q&A | Triathlon – Rules Intelligence",
+  "short_name": "TRI-Q&A",
+  "description": "Pilot reference app by bjorndalMovement",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1F3B",
+  "theme_color": "#0B1F3B",
+  "icons": [
+    {
+      "src": "assets/triqa-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
