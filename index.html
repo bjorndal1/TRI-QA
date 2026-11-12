@@ -67,7 +67,7 @@
 <link href="manifest.webmanifest" rel="manifest"/><meta content="yes" name="apple-mobile-web-app-capable"/><meta content="default" name="apple-mobile-web-app-status-bar-style"/><meta content="TRI-Q&amp;A" name="apple-mobile-web-app-title"/><meta content="noindex, nofollow" name="robots"/></head>
 <body>
 <div class="access-gate" id="access-gate" role="dialog" aria-modal="true" aria-labelledby="access-title">
-<form class="access-panel" id="access-form">
+<form class="access-panel" id="access-form" autocomplete="off">
 <h2 id="access-title">TRI-Q&amp;A · User registration</h2>
 <p id="access-intro">Identify yourself and accept the terms before using the pilot.</p>
 <label for="access-name" id="access-name-label">Full name</label><input id="access-name" required maxlength="120" autocomplete="name"/>
@@ -77,7 +77,7 @@
 <div class="access-terms" id="access-terms" tabindex="0"></div>
 <label class="access-consent" for="access-agree"><input id="access-agree" type="checkbox" required/><span id="access-agree-label">I have read and accept the terms of use.</span></label>
 <button class="access-submit" id="access-submit" type="submit">Continue to TRI-Q&amp;A</button>
-<p class="access-note" id="access-note">Pilot notice: this registration is not identity verification or secure account authentication. Data entered here is not sent to a registration database.</p>
+<p class="access-note" id="access-note">Internal pilot: use fictitious test details only. This does not verify identity or create a secure account.</p>
 </form></div>
 <div class="app-shell">
 <aside class="sidebar">
@@ -131,6 +131,7 @@
 (() => {
   'use strict';
   const $ = s => document.querySelector(s);
+  const API_BASE = 'https://tri-qa-api.onrender.com';
   const strings = {
     en:{modules:'REFERENCE MODULES',rules:'Rules Reference',education:'Education Reference',educationLevel:'Education level',
       officialDocs:'Official rulebooks ↗', proof:'Source-first answers',bilingual:'English & Danish',
@@ -141,7 +142,7 @@
       modeRules:'RULES REFERENCE',modeEducation:'EDUCATION REFERENCE',inputRules:'ASK TRI-Q&A',inputEducation:'EDUCATION / TEST QUESTION',
       exBike:'Can an athlete proceed without their bike?',exLine:'Can an athlete cross the line on the bike course?',
       exSpelling:'What is the penalty for drapting?',sources:'OFFICIAL SOURCE REFERENCES',
-      verified:'SOURCE-BASED ANSWER',needsVerification:'SOURCE NOT VERIFIED',clarification:'CLARIFICATION NEEDED',
+      verified:'SOURCE LINKS — VERIFY ORIGINAL',needsVerification:'SOURCE NOT VERIFIED',clarification:'CLARIFICATION NEEDED',
       excerpt:'Original English source excerpt',seeSource:'View original document ↗',
       assistantWorking:'Checking references',voiceUnsupported:'Voice recognition is not available in this browser. You can use keyboard dictation.',
       voiceStart:'Listening – speak your question…',voiceStopped:'Speech transcription added. Review the text before submitting.',
@@ -169,7 +170,7 @@
       modeRules:'REGEL_OPSLAG',modeEducation:'UDDANNELSESOPSLAG',inputRules:'SPØRG TRI-Q&A',inputEducation:'UDDANNELSES- / TESTSPØRGSMÅL',
       exBike:'Må en atlet fortsætte uden sin cykel?',exLine:'Må en atlet krydse linjen på cykelruten?',
       exSpelling:'Hvad er straffen for drapting?',sources:'OFFICIELLE KILDEHENVISNINGER',
-      verified:'KILDEBASERET SVAR',needsVerification:'KILDE IKKE VERIFICERET',clarification:'BEHOV FOR PRÆCISERING',
+      verified:'KILDELINK — KONTROLLÉR ORIGINAL',needsVerification:'KILDE IKKE VERIFICERET',clarification:'BEHOV FOR PRÆCISERING',
       excerpt:'Originalt engelsk regeluddrag',seeSource:'Åbn det originale dokument ↗',
       assistantWorking:'Kontrollerer kilder',voiceUnsupported:'Indtaling understøttes ikke af denne browser. Brug eventuelt tastaturets dikteringsfunktion.',
       voiceStart:'Lytter – indtal dit spørgsmål…',voiceStopped:'Talen er omsat til tekst. Kontrollér teksten før du sender.',
@@ -321,14 +322,18 @@
   async function askRemote(question){
     if(!state.server)return fallback(question);
     const body={question,language:state.lang,module:state.module,level:$('#level').value,ruleset:state.module==='rules'?state.ruleset:'world-triathlon',history:state.history.slice(-10)};
-    const call=()=>fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json',...(state.accessCode?{'X-TRI-QA-Access-Code':state.accessCode}:{})},body:JSON.stringify(body)});
+    const call=()=>fetch(`${API_BASE}/api/ask`,{method:'POST',headers:{'Content-Type':'application/json',...(state.accessCode?{'X-TRI-QA-Access-Code':state.accessCode}:{})},body:JSON.stringify(body)});
     let res=await call();
     if(res.status===401){
       const input=prompt(t('key'));if(!input)throw Error('Login cancelled');
       state.accessCode=input;res=await call();
     }
     if(!res.ok)throw Error(`API ${res.status}`);
-    return res.json();
+    const data=await res.json();
+    const sources=Array.isArray(data.sources)?data.sources:[];
+    return {type:sources.length?'answer':'unverified',
+      answer:data.answer||'',explanation:data.notice||'',
+      sources:sources.map(src=>({document:src.title||'Retrieved source',url:src.url}))};
   }
   async function send(forced){
     if(state.busy)return;
@@ -365,8 +370,8 @@
     try{rec.start()}catch(e){rec.onend();$('#input-help').textContent=t('voiceError')}
   }
   async function checkServer(){
-    try{const resp=await fetch('/api/status',{signal:AbortSignal.timeout(3500)});
-      if(!resp.ok)throw Error('offline');const data=await resp.json();state.server=true;state.full=!!data.full_rulebook_indexed;
+    try{const resp=await fetch(`${API_BASE}/health`,{signal:AbortSignal.timeout(3500)});
+      if(!resp.ok)throw Error('offline');const data=await resp.json();state.server=data.status==='ok'&&data.configured===true;state.full=false;
     }catch{state.server=false;state.full=false}
     updateStatus();
   }
@@ -381,7 +386,7 @@
   document.querySelectorAll('[data-example]').forEach(b=>b.addEventListener('click',()=>{$('#question').value=b.textContent;$('#question').focus()}));
   if(!(window.SpeechRecognition||window.webkitSpeechRecognition))$('#microphone').classList.add('unsupported');
 
-  const accessTranslations={"en":{"title":"TRI-Q&A · User registration","intro":"Identify yourself and acknowledge the terms before using the pilot.","name":"Full name","email":"Email address","affiliation":"Federation / organisation","placeholder":"Federation, club, organisation or independent","agree":"I have read and accept the terms of use.","submit":"Continue to TRI-Q&A","note":"Pilot notice: this is a browser-only acknowledgement, not verified identity or secure account authentication. Registration details are not submitted to a database.","terms":"<p><strong>TRI-Q&A — Terms of use (pilot)</strong></p><p>TRI-Q&A is an independent AI-assisted reference tool developed by bjorndalMovement. All rights to the application belong to bjorndalMovement.</p><p>Answers may contain errors, outdated editions, incomplete sources or incorrect interpretations. Always verify the applicable official competition rules, edition, event-specific provisions and original source before relying on an answer.</p><p>TRI-Q&A does not issue binding decisions, penalties or disqualifications. Competent officials and applicable official rules take precedence. Use is at your own responsibility; any limitation of liability applies only to the extent permitted by law.</p><p>Registration information is entered locally in this pilot and is not stored in an account database. Do not enter sensitive personal data in questions. A separate privacy notice and secure registration system are required before production launch.</p>"},"da":{"title":"TRI-Q&A · Brugerregistrering","intro":"Identificér dig og acceptér betingelserne, før du bruger piloten.","name":"Fulde navn","email":"E-mailadresse","affiliation":"Forbund / organisation","placeholder":"Forbund, klub, organisation eller uafhængig","agree":"Jeg har læst og accepterer betingelserne for brug.","submit":"Fortsæt til TRI-Q&A","note":"Pilot: Dette er kun en kvittering i browseren, ikke verificeret identitet eller sikker login. Registreringsoplysningerne sendes ikke til en database.","terms":"<p><strong>TRI-Q&A — Almindelige betingelser for brug (pilot)</strong></p><p>TRI-Q&A er et uafhængigt AI-baseret opslagsværktøj udviklet af bjorndalMovement. Alle rettigheder til applikationen tilhører bjorndalMovement.</p><p>Svar kan indeholde fejl, forældede regelversioner, ufuldstændige kilder eller fejlagtige fortolkninger. Kontrollér altid gældende officielle konkurrenceregler, udgave, stævnespecifikke bestemmelser og originalkilder, før et svar anvendes.</p><p>TRI-Q&A træffer ikke bindende afgørelser om sanktioner eller diskvalifikationer. Kompetente officials og de gældende officielle regler har forrang. Brug sker på eget ansvar; eventuelle ansvarsbegrænsninger gælder kun i det omfang, lovgivningen tillader.</p><p>Registreringsoplysningerne indtastes lokalt i denne pilot og lagres ikke i en brugerdatabase. Indtast ikke følsomme personoplysninger i spørgsmål. En særskilt privatlivspolitik og sikker registrering skal etableres før egentlig lancering.</p>"}};
+  const accessTranslations={"en":{"title":"TRI-Q&A · User registration","intro":"Identify yourself and acknowledge the terms before using the pilot.","name":"Full name","email":"Email address","affiliation":"Federation / organisation","placeholder":"Federation, club, organisation or independent","agree":"I have read and accept the terms of use.","submit":"Continue to TRI-Q&A","note":"Internal pilot: use fictitious test name, email and organisation only. This is not verified identity or secure account authentication; details are not sent to an account database.","terms":"<p><strong>TRI-Q&A — Terms of use (pilot)</strong></p><p>TRI-Q&A is an independent AI-assisted reference tool developed by bjorndalMovement. All rights to the application belong to bjorndalMovement.</p><p>Answers may contain errors, outdated editions, incomplete sources or incorrect interpretations. Always verify the applicable official competition rules, edition, event-specific provisions and original source before relying on an answer.</p><p>TRI-Q&A does not issue binding decisions, penalties or disqualifications. Competent officials and applicable official rules take precedence. Use is at your own responsibility; any limitation of liability applies only to the extent permitted by law.</p><p>Registration information is entered locally in this pilot and is not stored in an account database. Do not enter sensitive personal data in questions. A separate privacy notice and secure registration system are required before production launch.</p>"},"da":{"title":"TRI-Q&A · Brugerregistrering","intro":"Identificér dig og acceptér betingelserne, før du bruger piloten.","name":"Fulde navn","email":"E-mailadresse","affiliation":"Forbund / organisation","placeholder":"Forbund, klub, organisation eller uafhængig","agree":"Jeg har læst og accepterer betingelserne for brug.","submit":"Fortsæt til TRI-Q&A","note":"Intern pilot: Brug kun opdigtet testnavn, e-mail og organisation. Dette er hverken verificeret identitet eller sikkert login, og oplysningerne gemmes ikke i en brugerdatabase.","terms":"<p><strong>TRI-Q&A — Almindelige betingelser for brug (pilot)</strong></p><p>TRI-Q&A er et uafhængigt AI-baseret opslagsværktøj udviklet af bjorndalMovement. Alle rettigheder til applikationen tilhører bjorndalMovement.</p><p>Svar kan indeholde fejl, forældede regelversioner, ufuldstændige kilder eller fejlagtige fortolkninger. Kontrollér altid gældende officielle konkurrenceregler, udgave, stævnespecifikke bestemmelser og originalkilder, før et svar anvendes.</p><p>TRI-Q&A træffer ikke bindende afgørelser om sanktioner eller diskvalifikationer. Kompetente officials og de gældende officielle regler har forrang. Brug sker på eget ansvar; eventuelle ansvarsbegrænsninger gælder kun i det omfang, lovgivningen tillader.</p><p>Registreringsoplysningerne indtastes lokalt i denne pilot og lagres ikke i en brugerdatabase. Indtast ikke følsomme personoplysninger i spørgsmål. En særskilt privatlivspolitik og sikker registrering skal etableres før egentlig lancering.</p>"}};
   function updateAccessLanguage(lang){
     const a=accessTranslations[lang]||accessTranslations.en;
     const mapping={'access-title':'title','access-intro':'intro','access-name-label':'name','access-email-label':'email','access-affiliation-label':'affiliation','access-agree-label':'agree','access-submit':'submit','access-note':'note'};
