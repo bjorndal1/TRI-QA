@@ -62,6 +62,7 @@
 .access-note{font-size:11px!important;margin:9px 0 0!important}
 @media(max-width:650px){.access-panel{padding:15px}.access-panel h2{font-size:19px}.access-terms{max-height:130px}}
 
+.speech-actions{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 10px}.speech-btn{display:inline-flex;align-items:center;gap:5px;border:1px solid #c7d9eb;background:#f1f7fd;color:#0b4169;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700}.speech-btn:hover{background:#e2f1ff}.speech-btn:focus-visible{outline:3px solid #60c4ff;outline-offset:2px}@media(max-width:650px){.speech-btn{font-size:11px;padding:6px 8px}}
 </style>
 <link href="manifest.webmanifest" rel="manifest"/><meta content="yes" name="apple-mobile-web-app-capable"/><meta content="default" name="apple-mobile-web-app-status-bar-style"/><meta content="TRI-Q&amp;A" name="apple-mobile-web-app-title"/><meta content="noindex, nofollow" name="robots"/></head>
 <body>
@@ -196,7 +197,7 @@
   const textNode=(tag,content,cls)=>{const e=document.createElement(tag);if(cls)e.className=cls;e.textContent=content||'';return e;};
   const modeText=()=>state.module==='rules'?t('modeRules'):t('modeEducation');
   function updateLanguage(lang){
-    state.lang=lang;
+    stopSpeech();state.lang=lang;
     document.documentElement.lang=lang;
     document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});
     document.querySelectorAll('[data-lang]').forEach(el=>el.classList.toggle('active',el.dataset.lang===lang));
@@ -215,7 +216,7 @@
     $('#source-details').textContent=state.full?t('allLoaded'):(state.server?t('seedLoaded'):t('offlineInfo'));
   }
   function setModule(module){
-    state.module=module;
+    stopSpeech();state.module=module;
     $('#education-config').classList.toggle('hidden',module!=='education');
     $('#ruleset-choice').classList.toggle('hidden',module!=='rules');
     ['rules','education'].forEach(m=>{$('#'+m+'-tab').classList.toggle('active',m===module);$('#'+m+'-tab').setAttribute('aria-pressed',m===module?'true':'false')});
@@ -229,6 +230,39 @@
     scrollDown();return bubble;
   }
   function scrollDown(){$('#conversation').scrollTop=$('#conversation').scrollHeight;}
+  function speechAvailable(){return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;}
+  function stopSpeech(){if(speechAvailable())window.speechSynthesis.cancel();}
+  function addSpeechControls(bubble,data){
+    if(!speechAvailable())return;
+    const row=textNode('div','','speech-actions');
+    const answer=data.answer||data.question||'';
+    const sources=Array.isArray(data.sources)?data.sources:[];
+    const sourceText=sources.map(src=>[
+      src.document||src.title||'',
+      src.version||'',
+      src.section?('Section '+src.section):'',
+      src.page?('PDF page '+src.page):'',
+      src.text||''
+    ].filter(Boolean).join('. ')).join('. ');
+    const labels=state.lang==='da'?{answer:'▶ Oplæs svar',sources:'▶ Oplæs regelhenvisning',stop:'■ Stop'}:{answer:'▶ Read answer',sources:'▶ Read rule reference',stop:'■ Stop'};
+    const make=(label,spoken,lang)=>{
+      const btn=textNode('button',label,'speech-btn');btn.type='button';
+      btn.addEventListener('click',()=>{
+        stopSpeech();
+        if(!spoken.trim())return;
+        const utterance=new SpeechSynthesisUtterance(spoken);
+        utterance.lang=lang;
+        utterance.rate=0.94;
+        window.speechSynthesis.speak(utterance);
+      });
+      row.append(btn);
+    };
+    if(answer)make(labels.answer,answer+(data.explanation?' '+data.explanation:''),state.lang==='da'?'da-DK':'en-GB');
+    if(sourceText)make(labels.sources,sourceText,'en-GB');
+    const stop=textNode('button',labels.stop,'speech-btn');stop.type='button';stop.addEventListener('click',stopSpeech);row.append(stop);
+    bubble.append(row);
+  }
+
   function formatResult(data,bubble){
     bubble.textContent='';
     const kind=data.type||'unverified';
@@ -242,7 +276,7 @@
       (data.options||[]).forEach(option=>{
         let b=textNode('button',option,'clarify-option');b.type='button';
         b.addEventListener('click',()=>send(option));options.append(b);
-      });bubble.append(options);return;
+      });bubble.append(options);addSpeechControls(bubble,data);return;
     }
     bubble.append(textNode('div',data.answer||'', 'answer-main'));
     if(data.explanation)bubble.append(textNode('p',data.explanation,'explanation'));
@@ -261,6 +295,7 @@
         }group.append(card);
       });bubble.append(group);
     }
+    addSpeechControls(bubble,data);
     const notice=textNode('div',t('notice'),'notice');bubble.append(notice);
     if(!state.full&&(!state.server||!state.accessCode)){
       if(kind==='unverified')bubble.append(textNode('div',t('sampleLimited'),'notice'));
@@ -298,7 +333,7 @@
   async function send(forced){
     if(state.busy)return;
     const field=$('#question');const q=String(forced??field.value).trim();if(!q)return;
-    state.busy=true;$('#send').disabled=true;field.value='';
+    stopSpeech();state.busy=true;$('#send').disabled=true;field.value='';
     message('user',q);
     const previous=state.history.slice(-10);
     const bubble=message('assistant',t('assistantWorking'));bubble.classList.add('loading');
