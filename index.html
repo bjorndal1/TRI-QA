@@ -323,6 +323,7 @@
     return {type:'unverified',answer:t('unknownAnswer'),explanation:t('unknownExplanation'),sources:[]};
   }
   async function askRemote(question){
+    if(!state.server)await checkServer();
     if(!state.server)return fallback(question);
     const body={question,language:state.lang,module:state.module,level:$('#level').value,ruleset:state.module==='rules'?state.ruleset:'world-triathlon',history:state.history.slice(-10)};
     const call=()=>fetch(`${API_BASE}/api/ask`,{method:'POST',headers:{'Content-Type':'application/json',...(state.accessCode?{'X-TRI-QA-Access-Code':state.accessCode}:{})},body:JSON.stringify(body)});
@@ -373,7 +374,7 @@
     try{rec.start()}catch(e){rec.onend();$('#input-help').textContent=t('voiceError')}
   }
   async function checkServer(){
-    try{const resp=await fetch(`${API_BASE}/health`,{signal:AbortSignal.timeout(3500)});
+    try{const resp=await fetch(`${API_BASE}/health`,{signal:AbortSignal.timeout(45000)});
       if(!resp.ok)throw Error('offline');const data=await resp.json();state.server=data.status==='ok'&&data.configured===true;state.full=false;
     }catch{state.server=false;state.full=false}
     updateStatus();
