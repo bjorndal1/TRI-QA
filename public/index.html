@@ -45,6 +45,7 @@
   .composer-footer{font-size:8px;margin-top:3px}
 }
 
+.ruleset-choice{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px}.ruleset-choice label{font-size:11px;font-weight:750;color:var(--muted)}.ruleset-choice select{flex:1;max-width:235px;background:#f4f8fd;border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:12px;font-weight:750;color:var(--navy)}@media(max-width:650px){.ruleset-choice{margin-bottom:5px}.ruleset-choice select{padding:5px 7px;max-width:190px}}
 </style>
 <link href="manifest.webmanifest" rel="manifest"/><meta content="yes" name="apple-mobile-web-app-capable"/><meta content="default" name="apple-mobile-web-app-status-bar-style"/><meta content="TRI-Q&amp;A" name="apple-mobile-web-app-title"/><meta content="noindex, nofollow" name="robots"/></head>
 <body>
@@ -88,7 +89,7 @@
 </div>
 <div class="composer-area">
 <div class="composer">
-<div class="composer-top"><span id="input-label">ASK TRI-Q&amp;A</span><span class="mode-pill" id="mode-pill">RULES REFERENCE</span></div>
+<div class="ruleset-choice" id="ruleset-choice"><label for="ruleset" id="ruleset-label">Competition rules</label><select id="ruleset" aria-label="Applicable competition rules"><option value="world-triathlon">World Triathlon</option><option value="ironman">IRONMAN</option></select></div><div class="composer-top"><span id="input-label">ASK TRI-Q&amp;A</span><span class="mode-pill" id="mode-pill">RULES REFERENCE</span></div>
 <textarea aria-label="Question" id="question" maxlength="3500" placeholder="Type your question, even with spelling mistakes…" rows="2"></textarea>
 <div class="compose-actions"><div class="input-help" id="input-help">Questions can be typed or dictated.</div><div class="right-actions"><button aria-label="Dictate question" class="microphone" id="microphone" title="Dictate question" type="button"><svg fill="none" height="19" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="19"><rect height="12" rx="3" width="6" x="9" y="2"></rect><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"></path></svg></button><button aria-label="Find answer" class="send" id="send" type="button"><span data-i18n="find">Find answer</span><span class="send-arrow">→</span></button></div></div>
 </div>
@@ -158,7 +159,7 @@
       lineQ:'Hvilken linje mener du på cykelruten?',lineChoices:['Midterlinje','Spærrelinje','Ruteafmærkning','Anden linje'],
       newChat:'Samtalen er nulstillet.'}
   };
-  const state={lang:'en',module:'rules',history:[],busy:false,full:false,server:false,accessCode:'',recognition:null};
+  const state={lang:'en',module:'rules',ruleset:'world-triathlon',history:[],busy:false,full:false,server:false,accessCode:'',recognition:null};
   const sample={id:'seed-cycling-b',document:'World Triathlon Competition Rules 2026',version:'2026 · amendments through 29 April 2026',section:'5.1(b)',page:50,
     text:'Athletes are not permitted to make forward progress without being in possession of the bike;',
     url:'https://cms.triathlon.org/download-file/world-triathlon-competition-rules-2026#page=50'};
@@ -175,6 +176,7 @@
     $('#input-label').textContent=state.module==='rules'?t('inputRules'):t('inputEducation');
     $('#mode-pill').textContent=modeText();$('#page-title').textContent=t(state.module);
     $('#example-bike').textContent=t('exBike');$('#example-line').textContent=t('exLine');$('#example-spelling').textContent=t('exSpelling');
+    $('#ruleset-label').textContent=lang==='da'?'Gældende regelsæt':'Applicable rules';
     $('#new-chat').title=lang==='da'?'Ny samtale':'New conversation';
     updateStatus();
   }
@@ -186,6 +188,7 @@
   function setModule(module){
     state.module=module;
     $('#education-config').classList.toggle('hidden',module!=='education');
+    $('#ruleset-choice').classList.toggle('hidden',module!=='rules');
     ['rules','education'].forEach(m=>{$('#'+m+'-tab').classList.toggle('active',m===module);$('#'+m+'-tab').setAttribute('aria-pressed',m===module?'true':'false')});
     $('#page-title').textContent=t(module);$('#mode-pill').textContent=modeText();
     $('#input-label').textContent=module==='rules'?t('inputRules'):t('inputEducation');
@@ -235,6 +238,7 @@
     }
   }
   function fallback(question){
+    if(state.module==='rules' && state.ruleset==='ironman')return {type:'unverified',answer:state.lang==='da'?'IRONMAN-reglerne kræver onlinekildekontrol. AI-søgningen er endnu ikke tilsluttet.':'IRONMAN rules require online source verification. AI search is not yet connected.',explanation:state.lang==='da'?'World Triathlon-prøvesvar anvendes ikke på IRONMAN.':'World Triathlon sample answers are not applied to IRONMAN.',sources:[]};
     const raw=question.toLowerCase();
     const norm=raw.replace(/æ/g,'ae').replace(/ø/g,'o').replace(/å/g,'aa').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const history=state.history.map(h=>h.content).join(' ').toLowerCase();
@@ -252,7 +256,7 @@
   }
   async function askRemote(question){
     if(!state.server)return fallback(question);
-    const body={question,language:state.lang,module:state.module,level:$('#level').value,history:state.history.slice(-10)};
+    const body={question,language:state.lang,module:state.module,level:$('#level').value,ruleset:state.module==='rules'?state.ruleset:'world-triathlon',history:state.history.slice(-10)};
     const call=()=>fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json',...(state.accessCode?{'X-TRI-QA-Access-Code':state.accessCode}:{})},body:JSON.stringify(body)});
     let res=await call();
     if(res.status===401){
@@ -302,6 +306,7 @@
     }catch{state.server=false;state.full=false}
     updateStatus();
   }
+  $('#ruleset').addEventListener('change',e=>{state.ruleset=e.target.value;state.history=[];$('#chat-messages').textContent='';$('#intro').classList.remove('hidden');});
   $('#rules-tab').addEventListener('click',()=>setModule('rules'));
   $('#education-tab').addEventListener('click',()=>setModule('education'));
   document.querySelectorAll('[data-lang]').forEach(b=>b.addEventListener('click',()=>updateLanguage(b.dataset.lang)));
