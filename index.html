@@ -354,7 +354,7 @@
       state.history=[...previous,{role:'user',content:q},{role:'assistant',content:response.type==='clarification'?(response.question||''):response.answer||''}].slice(-12);
     }catch(e){
       bubble.classList.remove('loading');
-      formatResult({type:'unverified',answer:t('serverError'),explanation:String(e.message||'').startsWith('API')?'The server did not return a valid response.':''},bubble);
+      formatResult({type:'unverified',answer:t('serverError'),explanation:String(e.message||'').slice(0,500)},bubble);
     }finally{state.busy=false;$('#send').disabled=false;field.focus();scrollDown()}
   }
   function voice(){
