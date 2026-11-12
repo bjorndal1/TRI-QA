@@ -63,6 +63,7 @@
 @media(max-width:650px){.access-panel{padding:15px}.access-panel h2{font-size:19px}.access-terms{max-height:130px}}
 
 .speech-actions{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 10px}.speech-btn{display:inline-flex;align-items:center;gap:5px;border:1px solid #c7d9eb;background:#f1f7fd;color:#0b4169;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700}.speech-btn:hover{background:#e2f1ff}.speech-btn:focus-visible{outline:3px solid #60c4ff;outline-offset:2px}@media(max-width:650px){.speech-btn{font-size:11px;padding:6px 8px}}
+.profile-btn{border:1px solid #cbd9e8;background:#fff;border-radius:8px;color:#244969;padding:7px 10px;font-size:12px;font-weight:750}.profile-overlay{position:fixed;inset:0;z-index:1100;background:#0b1f3b88;display:flex;align-items:center;justify-content:center;padding:12px}.profile-panel{background:white;border-radius:14px;padding:22px;width:min(520px,100%);max-height:92dvh;overflow-y:auto;box-shadow:0 15px 50px #0003}.profile-panel h2{margin:0 0 8px;font-size:21px}.profile-panel p{font-size:12px;line-height:1.5}.profile-panel label{font-size:12px;font-weight:700;display:block;margin:10px 0 4px}.profile-panel input{width:100%;border:1px solid #cbd7e4;border-radius:8px;padding:9px}.profile-panel button{border-radius:8px;padding:9px 12px;border:1px solid #cad7e4;background:#fff;font-weight:700}.profile-panel .danger{border-color:#c53b46;color:#a52431}.profile-actions{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}.profile-terms{font-size:12px;max-height:170px;overflow:auto;border:1px solid #dae4ed;background:#f7fafc;border-radius:8px;padding:10px}.profile-terms p{margin:0 0 8px}.profile-warning{color:#a52431;font-weight:650}.profile-panel .primary{background:#0b1f3b;color:white}@media(max-width:650px){.profile-btn{padding:6px;font-size:11px}.profile-panel{padding:15px}}
 </style>
 <link href="manifest.webmanifest" rel="manifest"/><meta content="yes" name="apple-mobile-web-app-capable"/><meta content="default" name="apple-mobile-web-app-status-bar-style"/><meta content="TRI-Q&amp;A" name="apple-mobile-web-app-title"/><meta content="noindex, nofollow" name="robots"/></head>
 <body>
@@ -79,6 +80,7 @@
 <button class="access-submit" id="access-submit" type="submit">Continue to TRI-Q&amp;A</button>
 <p class="access-note" id="access-note">Pilot notice: this registration is not identity verification or secure account authentication. Data entered here is not sent to a registration database.</p>
 </form></div>
+<div class="profile-overlay hidden" id="profile-overlay" role="dialog" aria-modal="true" aria-labelledby="profile-title"><section class="profile-panel"><h2 id="profile-title">My profile · Pilot</h2><p id="profile-info"></p><label for="profile-name" id="profile-name-label">Full name</label><input id="profile-name" maxlength="120"/><label for="profile-email" id="profile-email-label">Email</label><input id="profile-email" type="email" maxlength="180"/><label for="profile-affiliation" id="profile-affiliation-label">Federation / organisation</label><input id="profile-affiliation" maxlength="160"/><div class="profile-actions"><button type="button" id="profile-save">Save changes</button><button type="button" id="profile-close">Close</button></div><h3 id="profile-terms-title">Terms of use</h3><div class="profile-terms" id="profile-terms"></div><p id="profile-warning" class="profile-warning"></p><button type="button" class="danger" id="profile-delete">Close pilot access and clear this session</button></section></div>
 <div class="app-shell">
 <aside class="sidebar">
 <div class="brand"><img alt="TRI-Q&amp;A symbol" class="brand-icon" src="assets/triqa-icon.png"/><div><div class="brand-name">TRI-<span>Q&amp;A</span></div><div class="brand-subtitle">TRIATHLON · RULES INTELLIGENCE</div></div></div>
@@ -100,7 +102,7 @@
 <main class="main">
 <header class="topbar">
 <div class="crumb"><span class="bar-line"></span><span id="page-title">Rules Reference</span><span class="beta">PILOT v0.3</span></div>
-<div class="tools"><button aria-label="New conversation" class="icon-btn" id="new-chat" title="New conversation" type="button">↻</button><div aria-label="Language selection" class="language-control"><button class="language active" data-lang="en" type="button">EN</button><button class="language" data-lang="da" type="button">DA</button></div></div>
+<div class="tools"><button type="button" class="profile-btn" id="profile-button">My profile</button><button aria-label="New conversation" class="icon-btn" id="new-chat" title="New conversation" type="button">↻</button><div aria-label="Language selection" class="language-control"><button class="language active" data-lang="en" type="button">EN</button><button class="language" data-lang="da" type="button">DA</button></div></div>
 </header>
 <div aria-live="polite" class="conversation" id="conversation">
 <div class="intro" id="intro">
@@ -208,6 +210,7 @@
     $('#example-bike').textContent=t('exBike');$('#example-line').textContent=t('exLine');$('#example-spelling').textContent=t('exSpelling');
     $('#ruleset-label').textContent=lang==='da'?'Gældende regelsæt':'Applicable rules';
     $('#new-chat').title=lang==='da'?'Ny samtale':'New conversation';
+    if(pilotProfile)profileLabels();
     updateStatus();
   }
   function updateStatus(){
@@ -381,6 +384,49 @@
   document.querySelectorAll('[data-example]').forEach(b=>b.addEventListener('click',()=>{$('#question').value=b.textContent;$('#question').focus()}));
   if(!(window.SpeechRecognition||window.webkitSpeechRecognition))$('#microphone').classList.add('unsupported');
 
+
+  let pilotProfile=null;
+  function profileLabels(){
+    const da=state.lang==='da';
+    const a=accessTranslations[state.lang]||accessTranslations.en;
+    $('#profile-button').textContent=da?'Min profil':'My profile';
+    $('#profile-title').textContent=da?'Min profil · Pilot':'My profile · Pilot';
+    $('#profile-info').textContent=da?'Dette er ikke en verificeret konto. Oplysningerne findes kun i denne åbne browsersession.':'This is not a verified account. Details exist only in this open browser session.';
+    $('#profile-name-label').textContent=a.name;$('#profile-email-label').textContent=a.email;$('#profile-affiliation-label').textContent=a.affiliation;
+    $('#profile-save').textContent=da?'Gem ændringer':'Save changes';
+    $('#profile-close').textContent=da?'Luk':'Close';
+    $('#profile-terms-title').textContent=da?'Betingelser for brug':'Terms of use';
+    $('#profile-terms').innerHTML=a.terms;
+    $('#profile-warning').textContent=da?'Vigtigt: Dette lukker kun den lokale pilotadgang. Der findes endnu ingen serverkonto, som kan slettes.':'Important: this only closes local pilot access. No server account exists yet to delete.';
+    $('#profile-delete').textContent=da?'Luk pilotadgang og ryd denne session':'Close pilot access and clear this session';
+  }
+  function openProfile(){
+    if(!pilotProfile)return;
+    profileLabels();
+    $('#profile-name').value=pilotProfile.name;
+    $('#profile-email').value=pilotProfile.email;
+    $('#profile-affiliation').value=pilotProfile.affiliation;
+    $('#profile-overlay').classList.remove('hidden');
+  }
+  $('#profile-button').addEventListener('click',openProfile);
+  $('#profile-close').addEventListener('click',()=>$('#profile-overlay').classList.add('hidden'));
+  $('#profile-save').addEventListener('click',()=>{
+    const name=$('#profile-name').value.trim(),email=$('#profile-email').value.trim(),affiliation=$('#profile-affiliation').value.trim();
+    if(!name||!affiliation||!$('#profile-email').checkValidity()||!email){alert(state.lang==='da'?'Udfyld alle felter med en gyldig e-mail.':'Complete all fields with a valid email.');return;}
+    pilotProfile={name,email,affiliation};
+    $('#profile-overlay').classList.add('hidden');
+  });
+  $('#profile-delete').addEventListener('click',()=>{
+    const da=state.lang==='da';
+    if(!confirm(da?'Vil du lukke pilotadgangen og rydde alle indtastninger og spørgsmål i denne session? Der findes ingen serverkonto at slette.':'Close pilot access and clear all entries and questions in this session? No server account exists to delete.'))return;
+    stopSpeech();pilotProfile=null;state.history=[];state.accessCode='';
+    $('#chat-messages').textContent='';$('#intro').classList.remove('hidden');$('#question').value='';
+    $('#access-form').reset();$('#access-lang').value=state.lang;
+    updateAccessLanguage(state.lang);
+    $('#profile-overlay').classList.add('hidden');$('#access-gate').classList.remove('hidden');
+    $('#access-name').focus();
+  });
+
   const accessTranslations={"en":{"title":"TRI-Q&A · User registration","intro":"Identify yourself and acknowledge the terms before using the pilot.","name":"Full name","email":"Email address","affiliation":"Federation / organisation","placeholder":"Federation, club, organisation or independent","agree":"I have read and accept the terms of use.","submit":"Continue to TRI-Q&A","note":"Pilot notice: this is a browser-only acknowledgement, not verified identity or secure account authentication. Registration details are not submitted to a database.","terms":"<p><strong>TRI-Q&A — Terms of use (pilot)</strong></p><p>TRI-Q&A is an independent AI-assisted reference tool developed by bjorndalMovement. All rights to the application belong to bjorndalMovement.</p><p>Answers may contain errors, outdated editions, incomplete sources or incorrect interpretations. Always verify the applicable official competition rules, edition, event-specific provisions and original source before relying on an answer.</p><p>TRI-Q&A does not issue binding decisions, penalties or disqualifications. Competent officials and applicable official rules take precedence. Use is at your own responsibility; any limitation of liability applies only to the extent permitted by law.</p><p>Registration information is entered locally in this pilot and is not stored in an account database. Do not enter sensitive personal data in questions. A separate privacy notice and secure registration system are required before production launch.</p>"},"da":{"title":"TRI-Q&A · Brugerregistrering","intro":"Identificér dig og acceptér betingelserne, før du bruger piloten.","name":"Fulde navn","email":"E-mailadresse","affiliation":"Forbund / organisation","placeholder":"Forbund, klub, organisation eller uafhængig","agree":"Jeg har læst og accepterer betingelserne for brug.","submit":"Fortsæt til TRI-Q&A","note":"Pilot: Dette er kun en kvittering i browseren, ikke verificeret identitet eller sikker login. Registreringsoplysningerne sendes ikke til en database.","terms":"<p><strong>TRI-Q&A — Almindelige betingelser for brug (pilot)</strong></p><p>TRI-Q&A er et uafhængigt AI-baseret opslagsværktøj udviklet af bjorndalMovement. Alle rettigheder til applikationen tilhører bjorndalMovement.</p><p>Svar kan indeholde fejl, forældede regelversioner, ufuldstændige kilder eller fejlagtige fortolkninger. Kontrollér altid gældende officielle konkurrenceregler, udgave, stævnespecifikke bestemmelser og originalkilder, før et svar anvendes.</p><p>TRI-Q&A træffer ikke bindende afgørelser om sanktioner eller diskvalifikationer. Kompetente officials og de gældende officielle regler har forrang. Brug sker på eget ansvar; eventuelle ansvarsbegrænsninger gælder kun i det omfang, lovgivningen tillader.</p><p>Registreringsoplysningerne indtastes lokalt i denne pilot og lagres ikke i en brugerdatabase. Indtast ikke følsomme personoplysninger i spørgsmål. En særskilt privatlivspolitik og sikker registrering skal etableres før egentlig lancering.</p>"}};
   function updateAccessLanguage(lang){
     const a=accessTranslations[lang]||accessTranslations.en;
@@ -394,7 +440,8 @@
     e.preventDefault();
     if(!e.currentTarget.reportValidity())return;
     const lang=document.getElementById('access-lang').value;
-    document.getElementById('access-gate').remove();
+    pilotProfile={name:document.getElementById('access-name').value.trim(),email:document.getElementById('access-email').value.trim(),affiliation:document.getElementById('access-affiliation').value.trim()};
+    document.getElementById('access-gate').classList.add('hidden');
     updateLanguage(lang);
     document.getElementById('question').focus();
   });
