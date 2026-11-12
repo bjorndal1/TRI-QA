@@ -332,7 +332,7 @@
       const input=prompt(t('key'));if(!input)throw Error('Login cancelled');
       state.accessCode=input;res=await call();
     }
-    if(!res.ok)throw Error(`API ${res.status}`);
+    if(!res.ok){const problem=await res.json().catch(()=>({}));throw Error([`API ${res.status}`,problem.error,problem.detail].filter(Boolean).join(' · '));}
     const data=await res.json();
     const sources=Array.isArray(data.sources)?data.sources:[];
     return {type:sources.length?'answer':'unverified',
