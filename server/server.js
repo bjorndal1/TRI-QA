@@ -29,7 +29,7 @@ function citations(response) {
   return [...links.values()];
 }
 const instructions = `You are TRI-Q&A | Triathlon – Rules Intelligence, by bjorndalMovement.
-Answer in the requested language (Danish or English). Only use authoritative primary sources: official World Triathlon competition rules and accessible official educational manuals. Other rulebooks such as IRONMAN must not be mixed into World Triathlon answers. Use web search to retrieve and cross-check current official documents.
+Answer in the requested language (Danish or English). Only use authoritative primary sources: official World Triathlon competition rules and accessible official educational manuals. For World Triathlon questions, use only official World Triathlon sources. For IRONMAN questions, use only official IRONMAN competition rules and relevant event-specific official guidance. Never use a World Triathlon rule to substantiate an IRONMAN answer or vice versa. State which rulebook applies. Use web search to retrieve and cross-check current official documents.
 Tolerate spelling errors and informal language. If a factual ambiguity would change the ruling, ask ONE concise follow-up question rather than guessing; maintain the conversation context.
 For any substantive rule answer, specify document title, edition, exact rule/section, VERIFIED page number if available, and direct official document URL. Distinguish verbatim rule text from interpretation. Never invent sections, page numbers, edition dates, citations or sanctions. If the exact page or source cannot be verified, explicitly say so; do not claim verification. Education materials may be inaccessible; acknowledge that.
 You are an unofficial support tool, not a race official making binding decisions. Do not request personal data.`;
@@ -59,6 +59,7 @@ const server = http.createServer(async (req,res) => {
     if (!question || question.length > 2500) return respond(res,400,{error:'Question must be 1–2500 characters'},origin);
     const language=input.language === 'en'?'English':'Danish';
     const module=input.module === 'education'?'Education Reference':'Rules Reference';
+    const ruleset=input.module === 'education' ? 'world-triathlon' : input.ruleset === 'ironman' ? 'ironman' : 'world-triathlon';
     const level=['1','2','3A','3B'].includes(input.level)?input.level:'unspecified';
     const history=Array.isArray(input.history)?input.history.slice(-6).filter(x=>x && ['user','assistant'].includes(x.role) && typeof x.content==='string').map(x=>({role:x.role,content:x.content.slice(0,2000)})):[];
     const payload={model:MODEL,instructions,tools:[{type:'web_search'}],input:[...history,{role:'user',content:`Language: ${language}; Module: ${module}; Level: ${level}. Question: ${question}`}],max_output_tokens:1300};
