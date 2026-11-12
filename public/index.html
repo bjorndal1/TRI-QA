@@ -46,9 +46,38 @@
 }
 
 .ruleset-choice{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px}.ruleset-choice label{font-size:11px;font-weight:750;color:var(--muted)}.ruleset-choice select{flex:1;max-width:235px;background:#f4f8fd;border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:12px;font-weight:750;color:var(--navy)}@media(max-width:650px){.ruleset-choice{margin-bottom:5px}.ruleset-choice select{padding:5px 7px;max-width:190px}}
+
+/* Pilot registration and explicit terms acknowledgement */
+.access-gate{position:fixed;inset:0;z-index:1000;background:#edf3fa;display:flex;align-items:center;justify-content:center;padding:14px;overflow-y:auto}
+.access-panel{width:min(510px,100%);max-height:calc(100dvh - 28px);overflow-y:auto;background:white;border:1px solid #dbe5f0;border-radius:16px;box-shadow:0 14px 45px #0b1f3b25;padding:22px}
+.access-panel h2{margin:0 0 5px;font-size:22px;color:var(--navy)}
+.access-panel p{margin:0 0 12px;font-size:12px;color:var(--muted)}
+.access-panel label{display:block;font-size:12px;font-weight:700;margin:9px 0 4px}
+.access-panel input,.access-panel select{width:100%;border:1px solid #cbd7e4;border-radius:8px;padding:9px;font-size:14px;background:#fff;color:var(--ink)}
+.access-terms{background:#f6f9fc;border:1px solid #dce6f0;border-radius:9px;padding:11px;margin:13px 0 8px;max-height:160px;overflow-y:auto;font-size:12px;line-height:1.45}
+.access-terms p{color:var(--ink);margin:0 0 8px}
+.access-consent{display:flex!important;align-items:flex-start;gap:9px;line-height:1.35;font-weight:500!important}
+.access-consent input{width:18px;min-width:18px;height:18px;margin:0}
+.access-submit{background:var(--navy);color:#fff;border:0;border-radius:9px;padding:11px 16px;width:100%;margin-top:12px;font-weight:750}
+.access-note{font-size:11px!important;margin:9px 0 0!important}
+@media(max-width:650px){.access-panel{padding:15px}.access-panel h2{font-size:19px}.access-terms{max-height:130px}}
+
 </style>
 <link href="manifest.webmanifest" rel="manifest"/><meta content="yes" name="apple-mobile-web-app-capable"/><meta content="default" name="apple-mobile-web-app-status-bar-style"/><meta content="TRI-Q&amp;A" name="apple-mobile-web-app-title"/><meta content="noindex, nofollow" name="robots"/></head>
 <body>
+<div class="access-gate" id="access-gate" role="dialog" aria-modal="true" aria-labelledby="access-title">
+<form class="access-panel" id="access-form">
+<h2 id="access-title">TRI-Q&amp;A · User registration</h2>
+<p id="access-intro">Identify yourself and accept the terms before using the pilot.</p>
+<label for="access-name" id="access-name-label">Full name</label><input id="access-name" required maxlength="120" autocomplete="name"/>
+<label for="access-email" id="access-email-label">Email address</label><input id="access-email" type="email" required maxlength="180" autocomplete="email"/>
+<label for="access-affiliation" id="access-affiliation-label">Federation / organisation</label><input id="access-affiliation" required maxlength="160" placeholder="Federation, club, organisation or independent"/>
+<label for="access-lang" id="access-lang-label">Language / Sprog</label><select id="access-lang"><option value="en">English</option><option value="da">Dansk</option></select>
+<div class="access-terms" id="access-terms" tabindex="0"></div>
+<label class="access-consent" for="access-agree"><input id="access-agree" type="checkbox" required/><span id="access-agree-label">I have read and accept the terms of use.</span></label>
+<button class="access-submit" id="access-submit" type="submit">Continue to TRI-Q&amp;A</button>
+<p class="access-note" id="access-note">Pilot notice: this registration is not identity verification or secure account authentication. Data entered here is not sent to a registration database.</p>
+</form></div>
 <div class="app-shell">
 <aside class="sidebar">
 <div class="brand"><img alt="TRI-Q&amp;A symbol" class="brand-icon" src="assets/triqa-icon.png"/><div><div class="brand-name">TRI-<span>Q&amp;A</span></div><div class="brand-subtitle">TRIATHLON · RULES INTELLIGENCE</div></div></div>
@@ -316,6 +345,26 @@
   $('#new-chat').addEventListener('click',()=>{state.history=[];$('#chat-messages').textContent='';$('#intro').classList.remove('hidden');$('#question').value='';$('#question').focus()});
   document.querySelectorAll('[data-example]').forEach(b=>b.addEventListener('click',()=>{$('#question').value=b.textContent;$('#question').focus()}));
   if(!(window.SpeechRecognition||window.webkitSpeechRecognition))$('#microphone').classList.add('unsupported');
+
+  const accessTranslations={"en":{"title":"TRI-Q&A · User registration","intro":"Identify yourself and acknowledge the terms before using the pilot.","name":"Full name","email":"Email address","affiliation":"Federation / organisation","placeholder":"Federation, club, organisation or independent","agree":"I have read and accept the terms of use.","submit":"Continue to TRI-Q&A","note":"Pilot notice: this is a browser-only acknowledgement, not verified identity or secure account authentication. Registration details are not submitted to a database.","terms":"<p><strong>TRI-Q&A — Terms of use (pilot)</strong></p><p>TRI-Q&A is an independent AI-assisted reference tool developed by bjorndalMovement. All rights to the application belong to bjorndalMovement.</p><p>Answers may contain errors, outdated editions, incomplete sources or incorrect interpretations. Always verify the applicable official competition rules, edition, event-specific provisions and original source before relying on an answer.</p><p>TRI-Q&A does not issue binding decisions, penalties or disqualifications. Competent officials and applicable official rules take precedence. Use is at your own responsibility; any limitation of liability applies only to the extent permitted by law.</p><p>Registration information is entered locally in this pilot and is not stored in an account database. Do not enter sensitive personal data in questions. A separate privacy notice and secure registration system are required before production launch.</p>"},"da":{"title":"TRI-Q&A · Brugerregistrering","intro":"Identificér dig og acceptér betingelserne, før du bruger piloten.","name":"Fulde navn","email":"E-mailadresse","affiliation":"Forbund / organisation","placeholder":"Forbund, klub, organisation eller uafhængig","agree":"Jeg har læst og accepterer betingelserne for brug.","submit":"Fortsæt til TRI-Q&A","note":"Pilot: Dette er kun en kvittering i browseren, ikke verificeret identitet eller sikker login. Registreringsoplysningerne sendes ikke til en database.","terms":"<p><strong>TRI-Q&A — Almindelige betingelser for brug (pilot)</strong></p><p>TRI-Q&A er et uafhængigt AI-baseret opslagsværktøj udviklet af bjorndalMovement. Alle rettigheder til applikationen tilhører bjorndalMovement.</p><p>Svar kan indeholde fejl, forældede regelversioner, ufuldstændige kilder eller fejlagtige fortolkninger. Kontrollér altid gældende officielle konkurrenceregler, udgave, stævnespecifikke bestemmelser og originalkilder, før et svar anvendes.</p><p>TRI-Q&A træffer ikke bindende afgørelser om sanktioner eller diskvalifikationer. Kompetente officials og de gældende officielle regler har forrang. Brug sker på eget ansvar; eventuelle ansvarsbegrænsninger gælder kun i det omfang, lovgivningen tillader.</p><p>Registreringsoplysningerne indtastes lokalt i denne pilot og lagres ikke i en brugerdatabase. Indtast ikke følsomme personoplysninger i spørgsmål. En særskilt privatlivspolitik og sikker registrering skal etableres før egentlig lancering.</p>"}};
+  function updateAccessLanguage(lang){
+    const a=accessTranslations[lang]||accessTranslations.en;
+    const mapping={'access-title':'title','access-intro':'intro','access-name-label':'name','access-email-label':'email','access-affiliation-label':'affiliation','access-agree-label':'agree','access-submit':'submit','access-note':'note'};
+    for(const [id,key] of Object.entries(mapping))document.getElementById(id).textContent=a[key];
+    document.getElementById('access-affiliation').placeholder=a.placeholder;
+    document.getElementById('access-terms').innerHTML=a.terms;
+  }
+  document.getElementById('access-lang').addEventListener('change',e=>updateAccessLanguage(e.target.value));
+  document.getElementById('access-form').addEventListener('submit',e=>{
+    e.preventDefault();
+    if(!e.currentTarget.reportValidity())return;
+    const lang=document.getElementById('access-lang').value;
+    document.getElementById('access-gate').remove();
+    updateLanguage(lang);
+    document.getElementById('question').focus();
+  });
+  updateAccessLanguage('en');
+
   updateLanguage('en');checkServer();
 })();
 
