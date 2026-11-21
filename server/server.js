@@ -58,11 +58,12 @@ const server = http.createServer(async (req,res) => {
     const question=String(input.question||'').trim();
     if (!question || question.length > 2500) return respond(res,400,{error:'Question must be 1–2500 characters'},origin);
     const language=input.language === 'en'?'English':'Danish';
-    const module=input.module === 'education'?'Education Reference':'Rules Reference';
+    const module=input.module === 'education'?'Officials Q&A':'Rules Reference';
     const ruleset=input.module === 'education' ? 'world-triathlon' : input.ruleset === 'ironman' ? 'ironman' : 'world-triathlon';
-    const level=['1','2','3A','3B'].includes(input.level)?input.level:'unspecified';
+    const requestedLevel=String(input.level||'').replace(/^Level\s*/i,'').toUpperCase();
+    const level=['1','2','3A','3B'].includes(requestedLevel)?requestedLevel:'unspecified';
     const history=Array.isArray(input.history)?input.history.slice(-6).filter(x=>x && ['user','assistant'].includes(x.role) && typeof x.content==='string').map(x=>({role:x.role,content:x.content.slice(0,2000)})):[];
-    const payload={model:MODEL,instructions,tools:[{type:'web_search'}],input:[...history,{role:'user',content:`Language: ${language}; Module: ${module}; Applicable rulebook: ${ruleset}; Level: ${level}. Question: ${question}`}],max_output_tokens:1300};
+    const payload={model:MODEL,instructions,tools:[{type:'web_search'}],input:[...history,{role:'user',content:`Language: ${language}; Module: ${module}; Applicable rulebook: ${ruleset}; WT reference level (adjust answer depth, not the rules): ${level}. Question: ${question}`}],max_output_tokens:1300};
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),45000);
     let response;
